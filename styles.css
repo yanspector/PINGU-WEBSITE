@@ -1,0 +1,65 @@
+:root{
+	--bg:#f8fafc;
+	--card:#ffffff;
+	--muted:#6b7280;
+	--accent:#f59e0b;
+	--text:#0f172a;
+}
+*{box-sizing:border-box}
+body{
+	margin:0;
+	font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;
+	background: #d7e6f3; /* base plastic color */
+	color:var(--text);
+	-webkit-font-smoothing:antialiased;
+	/* Roblox-style stud texture: repeating studs with highlight and shadow */
+	background-image:
+	  radial-gradient(circle at 30% 30%, rgba(255,255,255,0.95) 0px, rgba(255,255,255,0.8) 6px, transparent 8px),
+	  radial-gradient(circle at 70% 70%, rgba(0,0,0,0.12) 0px, rgba(0,0,0,0.06) 10px, transparent 12px),
+	  radial-gradient(circle at 50% 50%, rgba(255,255,255,0.02) 0px, rgba(0,0,0,0.02) 60%, transparent 62%);
+	background-size: 64px 64px, 64px 64px, 64px 64px;
+	background-position: 0 0, 0 0, 0 0;
+	background-repeat: repeat;
+}
+.site-header{
+	padding:2rem 1rem;
+	text-align:center;
+	background:linear-gradient(90deg, rgba(255,250,240,0.9), rgba(255,255,255,0.6));
+	border-bottom:1px solid rgba(245,158,11,0.08);
+	position:relative;
+}
+.site-header h1{margin:0;font-size:1.6rem;letter-spacing:0.6px}
+.tag{margin:0.25rem 0 0;color:var(--muted)}
+.container{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem;padding:1rem;max-width:1100px;margin:1.25rem auto}
+.card{background:var(--card);padding:1.2rem;border-radius:14px;box-shadow:0 6px 20px rgba(11,26,48,0.06)}
+label{display:block;margin-bottom:0.6rem;font-size:0.95rem}
+input[type=text],input[type=password],textarea{width:100%;padding:0.65rem;border:1px solid #ecedef;border-radius:10px;font-size:0.95rem;background:#fcfcfd}
+button{background:linear-gradient(180deg,var(--accent),#d97706);border:0;color:#071018;padding:0.65rem 0.9rem;border-radius:10px;cursor:pointer;font-weight:600}
+button:active{transform:translateY(1px)}
+.item-delete{background:#fee2e2;color:#991b1b;font-size:0.85rem;padding:0.4rem 0.75rem;border-radius:8px;border:1px solid #fecaca;cursor:pointer;margin-left:0.75rem}
+.item-delete:hover{background:#fecaca}
+.list-item-header{display:flex;align-items:center;justify-content:space-between;gap:0.75rem}
+.admin .admin-controls{display:flex;gap:0.5rem;flex-wrap:wrap;margin:0.5rem 0}
+.data-lists{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-top:0.5rem}
+ul{list-style:none;padding:0;margin:0}
+ul li{padding:0.6rem;border-bottom:1px dashed #f1f5f9}
+.muted{color:var(--muted)}
+.meta{font-size:0.8rem;color:var(--muted);margin-top:0.25rem}
+.body{margin-top:0.4rem}
+.site-footer{text-align:center;padding:1rem;color:var(--muted)}
+.hidden{display:none}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;background:#111;color:#fff;padding:0.5rem 0.75rem;border-radius:6px}
+
+/* Admin button top-right */
+.admin-btn{position:absolute;right:18px;top:18px;padding:0.5rem 0.7rem;border-radius:8px;background:#fff;border:1px solid rgba(15,23,42,0.06);box-shadow:0 4px 12px rgba(2,6,23,0.06);cursor:pointer}
+
+/* Modal */
+.modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,0.4);backdrop-filter:blur(2px);z-index:40}
+.modal-content{background:#fff;padding:1rem 1.2rem;border-radius:12px;min-width:300px;box-shadow:0 10px 40px rgba(2,6,23,0.25);position:relative}
+.modal-close{position:absolute;right:10px;top:8px;border:0;background:transparent;font-size:20px;cursor:pointer}
+.modal-actions{margin-top:0.6rem}
+
+/* Ensure hidden modal stays hidden (specific to modal + hidden class) */
+.modal.hidden{display:none}
+
+@media(min-width:900px){.container{padding:2rem}}

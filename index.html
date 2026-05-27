@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="styles.css" />
+    <title>Talking Potato — Idea Hub</title>
+</head>
+<body>
+    <header class="site-header">
+        <h1>Talking Potato</h1>
+        <p class="tag">A place to share ideas and request collaborations for the book series</p>
+        <button id="adminToggle" class="admin-btn" title="Admin">Admin</button>
+    </header>
+
+    <main class="container">
+        <section class="card">
+            <h2>Share an Idea</h2>
+            <form id="ideaForm">
+                <label>Name (optional)
+                    <input type="text" name="name" />
+                </label>
+                <label>Idea Title
+                    <input type="text" name="title" required />
+                </label>
+                <label>Idea
+                    <textarea name="idea" rows="4" required></textarea>
+                </label>
+                <!-- contact removed -->
+                <button type="submit">Submit Idea</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>Request Collaboration</h2>
+            <form id="collabForm">
+                <label>Name
+                    <input type="text" name="name" required />
+                </label>
+                <label>What would you like to collaborate on?
+                    <textarea name="details" rows="4" required></textarea>
+                </label>
+                <!-- contact removed -->
+                <button type="submit">Request Collaboration</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>Send a Message</h2>
+            <form id="messageForm">
+                <label>Name
+                    <input type="text" name="name" />
+                </label>
+                <label>Message
+                    <textarea name="message" rows="3" required></textarea>
+                </label>
+                <button type="submit">Send Message</button>
+            </form>
+        </section>
+
+        <section class="card admin">
+            <h2>Admin</h2>
+            <div id="adminArea">
+                <!-- admin login moved to top-right modal -->
+
+                <div id="adminPanel" class="hidden">
+                    <p class="muted">Signed in as admin. Code: 1982</p>
+                    <div class="admin-controls">
+                        <button id="exportAll">Export All Data</button>
+                        <button id="clearAll">Clear All Data</button>
+                        <button id="signOut">Sign Out</button>
+                    </div>
+
+                    <div class="data-lists">
+                        <div>
+                            <h3>Ideas (<span id="ideasCount">0</span>)</h3>
+                            <ul id="ideasList"></ul>
+                        </div>
+                        <div>
+                            <h3>Collaborations (<span id="collabsCount">0</span>)</h3>
+                            <ul id="collabsList"></ul>
+                        </div>
+                        <div>
+                            <h3>Messages (<span id="messagesCount">0</span>)</h3>
+                            <ul id="messagesList"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <small>CREATED BY THE OFFICIAL TALKING POTATO CREATORS</small>
+    </footer>
+
+    <div id="toast" class="toast hidden"></div>
+
+        <!-- Admin modal (opened by top-right Admin button) -->
+        <div id="adminModal" class="modal hidden">
+            <div class="modal-content">
+                <button class="modal-close" id="adminModalClose">×</button>
+                <h3>Admin sign in</h3>
+                <input id="adminModalCode" type="password" placeholder="Enter admin code" />
+                <div class="modal-actions">
+                    <button id="adminModalLogin">Sign In</button>
+                </div>
+            </div>
+        </div>
+
+    <script>
+        // Keys
+        const KEYS = {
+            IDEAS: 'tp_ideas',
+            COLLABS: 'tp_collabs',
+            MESSAGES: 'tp_messages'
+        };
+
+        function getData(key) {
+            try {
+                return JSON.parse(localStorage.getItem(key) || '[]');
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveData(key, arr) {
+            localStorage.setItem(key, JSON.stringify(arr));
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.remove('hidden');
+            setTimeout(() => t.classList.add('hidden'), 2500);
+        }
+
+        // Forms
+        document.getElementById('ideaForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const f = e.target;
+            const idea = {
+                id: Date.now(),
+                name: f.name.value.trim(),
+                title: f.title.value.trim(),
+                idea: f.idea.value.trim(),
+                ts: new Date().toISOString()
+            };
+            const arr = getData(KEYS.IDEAS);
+            arr.unshift(idea);
+            saveData(KEYS.IDEAS, arr);
+            f.reset();
+            showToast('Idea submitted — thank you!');
+            renderAdmin();
+        });
+
+        document.getElementById('collabForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const f = e.target;
+            const req = {
+                id: Date.now(),
+                name: f.name.value.trim(),
+                details: f.details.value.trim(),
+                ts: new Date().toISOString()
+            };
+            const arr = getData(KEYS.COLLABS);
+            arr.unshift(req);
+            saveData(KEYS.COLLABS, arr);
+            f.reset();
+            showToast('Collaboration request submitted!');
+            renderAdmin();
+        });
+
+        document.getElementById('messageForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const f = e.target;
+            const msg = {
+                id: Date.now(),
+                name: f.name.value.trim(),
+                message: f.message.value.trim(),
+                ts: new Date().toISOString()
+            };
+            const arr = getData(KEYS.MESSAGES);
+            arr.unshift(msg);
+            saveData(KEYS.MESSAGES, arr);
+            f.reset();
+            showToast('Message sent — thanks!');
+            renderAdmin();
+        });
+
+        // Admin
+        const ADMIN_CODE = '1982';
+        const adminToggle = document.getElementById('adminToggle');
+        const adminModal = document.getElementById('adminModal');
+        const adminModalCode = document.getElementById('adminModalCode');
+        const adminModalLogin = document.getElementById('adminModalLogin');
+        const adminModalClose = document.getElementById('adminModalClose');
+        const adminPanel = document.getElementById('adminPanel');
+
+        // close modal when clicking outside content
+        adminModal.addEventListener('click', (e) => {
+            if (e.target === adminModal) adminModal.classList.add('hidden');
+        });
+
+        // close modal with Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') adminModal.classList.add('hidden');
+        });
+
+                // Open admin modal from top-right button
+                adminToggle.addEventListener('click', () => {
+                    adminModal.classList.remove('hidden');
+                    adminModalCode.focus();
+                });
+
+                adminModalClose.addEventListener('click', () => {
+                    adminModal.classList.add('hidden');
+                });
+
+                adminModalLogin.addEventListener('click', () => {
+                    const val = adminModalCode.value.trim();
+                    if (val === ADMIN_CODE) {
+                        sessionStorage.setItem('tp_admin', '1');
+                        showToast('Signed in as admin');
+                        adminModal.classList.add('hidden');
+                        renderAdmin();
+                    } else {
+                        showToast('Incorrect admin code');
+                    }
+                    adminModalCode.value = '';
+                });
+
+                // allow Enter key to submit modal
+                adminModalCode.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') adminModalLogin.click();
+                });
+
+        document.getElementById('signOut').addEventListener('click', () => {
+            sessionStorage.removeItem('tp_admin');
+            renderAdmin();
+        });
+
+        document.getElementById('exportAll').addEventListener('click', () => {
+            const data = {
+                ideas: getData(KEYS.IDEAS),
+                collaborations: getData(KEYS.COLLABS),
+                messages: getData(KEYS.MESSAGES)
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'talking-potato-data.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        document.getElementById('clearAll').addEventListener('click', () => {
+            if (!confirm('Clear all stored ideas, collaborations, and messages? This cannot be undone.')) return;
+            localStorage.removeItem(KEYS.IDEAS);
+            localStorage.removeItem(KEYS.COLLABS);
+            localStorage.removeItem(KEYS.MESSAGES);
+            renderAdmin();
+            showToast('All data cleared');
+        });
+
+        function renderList(containerId, items, type) {
+            const ul = document.getElementById(containerId);
+            ul.innerHTML = '';
+            if (!items.length) {
+                const li = document.createElement('li');
+                li.className = 'muted';
+                li.textContent = 'No entries.';
+                ul.appendChild(li);
+                return;
+            }
+            for (const it of items) {
+                const li = document.createElement('li');
+                li.innerHTML = `<div class="list-item-header"><strong>${escapeHtml(it.title || it.name || (it.message && it.message.slice(0,20)) || 'Entry')}</strong>
+                        <button class="item-delete" data-type="${type}" data-id="${it.id}" title="Delete entry">Delete</button></div>
+                        <div class="meta">${escapeHtml(it.ts || '')}</div>
+                        <div class="body">${escapeHtml((it.idea || it.details || it.message) || '')}</div>`;
+                ul.appendChild(li);
+            }
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.matches('.item-delete')) return;
+            const type = e.target.dataset.type;
+            const id = e.target.dataset.id;
+            deleteAdminItem(type, id);
+        });
+
+        function deleteAdminItem(type, id) {
+            const keyMap = {
+                ideas: KEYS.IDEAS,
+                collabs: KEYS.COLLABS,
+                messages: KEYS.MESSAGES
+            };
+            const key = keyMap[type];
+            if (!key) return;
+            const items = getData(key).filter(item => String(item.id) !== String(id));
+            saveData(key, items);
+            showToast('Entry deleted');
+            renderAdmin();
+        }
+
+        function escapeHtml(s) {
+            if (!s) return '';
+            return String(s).replace(/[&<>\"']/g, function (m) {
+                return ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'})[m];
+            });
+        }
+
+        function renderAdmin() {
+            const isAdmin = sessionStorage.getItem('tp_admin') === '1';
+            if (isAdmin) {
+                adminPanel.classList.remove('hidden');
+                const ideas = getData(KEYS.IDEAS);
+                const collabs = getData(KEYS.COLLABS);
+                const messages = getData(KEYS.MESSAGES);
+                document.getElementById('ideasCount').textContent = ideas.length;
+                document.getElementById('collabsCount').textContent = collabs.length;
+                document.getElementById('messagesCount').textContent = messages.length;
+                renderList('ideasList', ideas, 'ideas');
+                renderList('collabsList', collabs, 'collabs');
+                renderList('messagesList', messages, 'messages');
+            } else {
+                adminPanel.classList.add('hidden');
+            }
+        }
+
+        // Initial render
+        document.addEventListener('DOMContentLoaded', renderAdmin);
+    </script>
+</body>
+</html>

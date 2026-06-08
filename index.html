@@ -10,7 +10,11 @@
     <header class="site-header">
         <h1>Talking Potato</h1>
         <p class="tag">A place to share ideas and request collaborations for the book series</p>
-        <button id="adminToggle" class="admin-btn" title="Admin">Admin</button>
+        <div class="header-actions">
+            <button id="themeToggle" class="theme-btn" title="Toggle theme">Theme</button>
+            <button id="bgToggle" class="bg-btn" title="Change background">Background</button>
+            <button id="adminToggle" class="admin-btn" title="Admin">Admin</button>
+        </div>
     </header>
 
     <main class="container">
@@ -64,7 +68,7 @@
                 <!-- admin login moved to top-right modal -->
 
                 <div id="adminPanel" class="hidden">
-                    <p class="muted">Signed in as admin. Code: 201500</p>
+                    <p class="muted">Signed in as admin.</p>
                     <div class="admin-controls">
                         <button id="exportAll">Export All Data</button>
                         <button id="clearAll">Clear All Data</button>
@@ -196,6 +200,50 @@
         const adminModalLogin = document.getElementById('adminModalLogin');
         const adminModalClose = document.getElementById('adminModalClose');
         const adminPanel = document.getElementById('adminPanel');
+        const themeToggle = document.getElementById('themeToggle');
+        const bgToggle = document.getElementById('bgToggle');
+        const THEME_KEY = 'tp_theme';
+        const BG_KEY = 'tp_bg';
+        const BG_PRESETS = [
+            { id: 'blue', label: 'Sky' },
+            { id: 'mint', label: 'Mint' },
+            { id: 'peach', label: 'Peach' },
+            { id: 'lavender', label: 'Lavender' }
+        ];
+
+        function setTheme(theme) {
+            document.body.dataset.theme = theme;
+            localStorage.setItem(THEME_KEY, theme);
+            themeToggle.textContent = theme === 'dark' ? 'Light Mode' : 'Dark Mode';
+        }
+
+        function loadTheme() {
+            const theme = localStorage.getItem(THEME_KEY) || 'light';
+            setTheme(theme);
+        }
+
+        function setBg(bg) {
+            const preset = BG_PRESETS.find((item) => item.id === bg) || BG_PRESETS[0];
+            document.body.dataset.bg = preset.id;
+            localStorage.setItem(BG_KEY, preset.id);
+            bgToggle.textContent = `Background: ${preset.label}`;
+        }
+
+        function loadBg() {
+            const bg = localStorage.getItem(BG_KEY) || 'blue';
+            setBg(bg);
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const nextTheme = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
+            setTheme(nextTheme);
+        });
+
+        bgToggle.addEventListener('click', () => {
+            const current = document.body.dataset.bg || 'blue';
+            const nextIndex = (BG_PRESETS.findIndex((item) => item.id === current) + 1) % BG_PRESETS.length;
+            setBg(BG_PRESETS[nextIndex].id);
+        });
 
         // close modal when clicking outside content
         adminModal.addEventListener('click', (e) => {
@@ -275,11 +323,26 @@
                 return;
             }
             for (const it of items) {
+                const title = type === 'ideas'
+                    ? escapeHtml(it.title || 'Untitled idea')
+                    : type === 'collabs'
+                        ? escapeHtml(it.details ? it.details.slice(0, 40) : 'Collaboration request')
+                        : 'Message';
+                const bodyText = type === 'messages'
+                    ? it.message
+                    : it.idea || it.details;
+                const metaParts = [];
+                if (it.name) {
+                    metaParts.push(type === 'messages' ? `Sender: ${escapeHtml(it.name)}` : `From: ${escapeHtml(it.name)}`);
+                }
+                if (it.ts) {
+                    metaParts.push(escapeHtml(it.ts));
+                }
                 const li = document.createElement('li');
-                li.innerHTML = `<div class="list-item-header"><strong>${escapeHtml(it.title || it.name || (it.message && it.message.slice(0,20)) || 'Entry')}</strong>
+                li.innerHTML = `<div class="list-item-header"><strong>${title}</strong>
                         <button class="item-delete" data-type="${type}" data-id="${it.id}" title="Delete entry">Delete</button></div>
-                        <div class="meta">${escapeHtml(it.ts || '')}</div>
-                        <div class="body">${escapeHtml((it.idea || it.details || it.message) || '')}</div>`;
+                        <div class="meta">${metaParts.join(' • ')}</div>
+                        <div class="body">${escapeHtml(bodyText || '')}</div>`;
                 ul.appendChild(li);
             }
         }
@@ -331,7 +394,11 @@
         }
 
         // Initial render
-        document.addEventListener('DOMContentLoaded', renderAdmin);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTheme();
+            loadBg();
+            renderAdmin();
+        });
     </script>
 </body>
 </html>

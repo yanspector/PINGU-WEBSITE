@@ -62,6 +62,24 @@
             </form>
         </section>
 
+        <section class="card">
+            <h2>Recent Activity</h2>
+            <div class="recent-lists">
+                <div>
+                    <h3>Recent Ideas</h3>
+                    <ul id="recentIdeasList"></ul>
+                </div>
+                <div>
+                    <h3>Recent Collaborations</h3>
+                    <ul id="recentCollabsList"></ul>
+                </div>
+                <div>
+                    <h3>Recent Messages</h3>
+                    <ul id="recentMessagesList"></ul>
+                </div>
+            </div>
+        </section>
+
         <section class="card admin">
             <h2>Admin</h2>
             <div id="adminArea">
@@ -139,6 +157,17 @@
             setTimeout(() => t.classList.add('hidden'), 2500);
         }
 
+        function respondToMessage(id, responseText) {
+            const messages = getData(KEYS.MESSAGES);
+            const message = messages.find(item => String(item.id) === String(id));
+            if (!message) return;
+
+            message.response = responseText.trim();
+            saveData(KEYS.MESSAGES, messages);
+            showToast('Response saved');
+            renderAdmin();
+        }
+
         // Forms
         document.getElementById('ideaForm').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -178,19 +207,24 @@
         document.getElementById('messageForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const f = e.target;
+            addMessage(f.name.value, f.message.value);
+            f.reset();
+        });
+
+        function addMessage(name, messageText) {
             const msg = {
                 id: Date.now(),
-                name: f.name.value.trim(),
-                message: f.message.value.trim(),
+                name: name.trim(),
+                message: messageText.trim(),
+                response: '',
                 ts: new Date().toISOString()
             };
             const arr = getData(KEYS.MESSAGES);
             arr.unshift(msg);
             saveData(KEYS.MESSAGES, arr);
-            f.reset();
             showToast('Message sent — thanks!');
             renderAdmin();
-        });
+        }
 
         // Admin
         const ADMIN_CODE = '201500';
@@ -338,16 +372,32 @@
                 if (it.ts) {
                     metaParts.push(escapeHtml(it.ts));
                 }
+                const actionButtons = type === 'messages'
+                    ? `<button class="item-respond" data-id="${it.id}" title="Respond">Respond</button>
+                       <button class="item-delete" data-type="${type}" data-id="${it.id}" title="Delete entry">Delete</button>`
+                    : `<button class="item-delete" data-type="${type}" data-id="${it.id}" title="Delete entry">Delete</button>`;
+                const responseHtml = type === 'messages' && it.response
+                    ? `<div class="response"><strong>Response:</strong> ${escapeHtml(it.response)}</div>`
+                    : '';
                 const li = document.createElement('li');
                 li.innerHTML = `<div class="list-item-header"><strong>${title}</strong>
-                        <button class="item-delete" data-type="${type}" data-id="${it.id}" title="Delete entry">Delete</button></div>
+                        ${actionButtons}</div>
                         <div class="meta">${metaParts.join(' • ')}</div>
-                        <div class="body">${escapeHtml(bodyText || '')}</div>`;
+                        <div class="body">${escapeHtml(bodyText || '')}</div>
+                        ${responseHtml}`;
                 ul.appendChild(li);
             }
         }
 
         document.addEventListener('click', (e) => {
+            if (e.target.matches('.item-respond')) {
+                const id = e.target.dataset.id;
+                const reply = prompt('Enter your response to this message:');
+                if (reply !== null) {
+                    respondToMessage(id, reply);
+                }
+                return;
+            }
             if (!e.target.matches('.item-delete')) return;
             const type = e.target.dataset.type;
             const id = e.target.dataset.id;
@@ -375,6 +425,43 @@
             });
         }
 
+        function renderRecentList(containerId, items, type, limit = 3) {
+            const ul = document.getElementById(containerId);
+            ul.innerHTML = '';
+            const recentItems = items.slice(0, limit);
+            if (!recentItems.length) {
+                const li = document.createElement('li');
+                li.className = 'muted';
+                li.textContent = 'No recent entries.';
+                ul.appendChild(li);
+                return;
+            }
+            for (const it of recentItems) {
+                const title = type === 'ideas'
+                    ? escapeHtml(it.title || 'Untitled idea')
+                    : type === 'collabs'
+                        ? escapeHtml(it.details ? it.details.slice(0, 40) : 'Collaboration request')
+                        : escapeHtml(it.message || 'Message');
+                const bodyText = type === 'messages'
+                    ? it.message
+                    : type === 'ideas'
+                        ? it.idea
+                        : it.details;
+                const li = document.createElement('li');
+                li.innerHTML = `<strong>${title}</strong>
+                        <div class="meta">${it.name ? escapeHtml(it.name) + ' • ' : ''}${escapeHtml(new Date(it.ts).toLocaleString())}</div>
+                        <div class="body">${escapeHtml(bodyText || '')}</div>
+                        ${type === 'messages' && it.response ? `<div class="response"><strong>Response:</strong> ${escapeHtml(it.response)}</div>` : ''}`;
+                ul.appendChild(li);
+            }
+        }
+
+        function renderRecentActivity() {
+            renderRecentList('recentIdeasList', getData(KEYS.IDEAS), 'ideas');
+            renderRecentList('recentCollabsList', getData(KEYS.COLLABS), 'collabs');
+            renderRecentList('recentMessagesList', getData(KEYS.MESSAGES), 'messages');
+        }
+
         function renderAdmin() {
             const isAdmin = sessionStorage.getItem('tp_admin') === '1';
             if (isAdmin) {
@@ -391,6 +478,7 @@
             } else {
                 adminPanel.classList.add('hidden');
             }
+            renderRecentActivity();
         }
 
         // Initial render

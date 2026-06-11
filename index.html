@@ -41,6 +41,9 @@
                 <label>Name
                     <input type="text" name="name" required />
                 </label>
+                <label>Title
+                    <input type="text" name="title" required />
+                </label>
                 <label>What would you like to collaborate on?
                     <textarea name="details" rows="4" required></textarea>
                 </label>
@@ -54,6 +57,9 @@
             <form id="messageForm">
                 <label>Name
                     <input type="text" name="name" />
+                </label>
+                <label>Title
+                    <input type="text" name="title" required />
                 </label>
                 <label>Message
                     <textarea name="message" rows="3" required></textarea>
@@ -113,7 +119,7 @@
     </main>
 
     <footer class="site-footer">
-        <small>CREATED BY THE OFFICIAL TALKING POTATO CREATORS</small>
+        <small>CREATED BY THE OFFICIAL TALKING POTATO CREATOR :YAN</small>
     </footer>
 
     <div id="toast" class="toast hidden"></div>
@@ -193,7 +199,9 @@
             const req = {
                 id: Date.now(),
                 name: f.name.value.trim(),
+                title: f.title.value.trim(),
                 details: f.details.value.trim(),
+                status: 'pending',
                 ts: new Date().toISOString()
             };
             const arr = getData(KEYS.COLLABS);
@@ -207,14 +215,15 @@
         document.getElementById('messageForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const f = e.target;
-            addMessage(f.name.value, f.message.value);
+            addMessage(f.name.value, f.title.value, f.message.value);
             f.reset();
         });
 
-        function addMessage(name, messageText) {
+        function addMessage(name, title, messageText) {
             const msg = {
                 id: Date.now(),
                 name: name.trim(),
+                title: title.trim(),
                 message: messageText.trim(),
                 response: '',
                 ts: new Date().toISOString()
@@ -360,11 +369,12 @@
                 const title = type === 'ideas'
                     ? escapeHtml(it.title || 'Untitled idea')
                     : type === 'collabs'
-                        ? escapeHtml(it.details ? it.details.slice(0, 40) : 'Collaboration request')
-                        : 'Message';
+                        ? escapeHtml(it.title || (it.details ? it.details.slice(0, 40) : 'Collaboration request'))
+                        : escapeHtml(it.title || 'Message');
                 const bodyText = type === 'messages'
                     ? it.message
                     : it.idea || it.details;
+                const status = type === 'collabs' ? (it.status || 'pending') : '';
                 const metaParts = [];
                 if (it.name) {
                     metaParts.push(type === 'messages' ? `Sender: ${escapeHtml(it.name)}` : `From: ${escapeHtml(it.name)}`);
@@ -372,15 +382,24 @@
                 if (it.ts) {
                     metaParts.push(escapeHtml(it.ts));
                 }
+                const statusBadge = type === 'collabs'
+                    ? `<span class="item-status ${escapeHtml(status)}">${escapeHtml(status)}</span>`
+                    : '';
                 const actionButtons = type === 'messages'
                     ? `<button class="item-respond" data-id="${it.id}" title="Respond">Respond</button>
                        <button class="item-delete" data-type="${type}" data-id="${it.id}" title="Delete entry">Delete</button>`
-                    : `<button class="item-delete" data-type="${type}" data-id="${it.id}" title="Delete entry">Delete</button>`;
+                    : type === 'collabs'
+                        ? status === 'pending'
+                            ? `<button class="item-action accept" data-type="${type}" data-id="${it.id}" data-action="accept" title="Accept request">Accept</button>
+                               <button class="item-action decline" data-type="${type}" data-id="${it.id}" data-action="decline" title="Decline request">Decline</button>
+                               <button class="item-delete" data-type="${type}" data-id="${it.id}" title="Delete entry">Delete</button>`
+                            : `<button class="item-delete" data-type="${type}" data-id="${it.id}" title="Delete entry">Delete</button>`
+                        : `<button class="item-delete" data-type="${type}" data-id="${it.id}" title="Delete entry">Delete</button>`;
                 const responseHtml = type === 'messages' && it.response
                     ? `<div class="response"><strong>Response:</strong> ${escapeHtml(it.response)}</div>`
                     : '';
                 const li = document.createElement('li');
-                li.innerHTML = `<div class="list-item-header"><strong>${title}</strong>
+                li.innerHTML = `<div class="list-item-header"><strong>${title}</strong> ${statusBadge}
                         ${actionButtons}</div>
                         <div class="meta">${metaParts.join(' • ')}</div>
                         <div class="body">${escapeHtml(bodyText || '')}</div>
@@ -398,11 +417,29 @@
                 }
                 return;
             }
+            if (e.target.matches('.item-action')) {
+                const type = e.target.dataset.type;
+                const id = e.target.dataset.id;
+                const action = e.target.dataset.action;
+                handleCollabAction(type, id, action);
+                return;
+            }
             if (!e.target.matches('.item-delete')) return;
             const type = e.target.dataset.type;
             const id = e.target.dataset.id;
             deleteAdminItem(type, id);
         });
+
+        function handleCollabAction(type, id, action) {
+            if (type !== 'collabs' || !['accept', 'decline'].includes(action)) return;
+            const collabs = getData(KEYS.COLLABS);
+            const collab = collabs.find(item => String(item.id) === String(id));
+            if (!collab) return;
+            collab.status = action === 'accept' ? 'accepted' : 'declined';
+            saveData(KEYS.COLLABS, collabs);
+            showToast(`Collaboration request ${action}ed.`);
+            renderAdmin();
+        }
 
         function deleteAdminItem(type, id) {
             const keyMap = {
@@ -437,18 +474,22 @@
                 return;
             }
             for (const it of recentItems) {
+                const status = type === 'collabs' ? (it.status || 'pending') : '';
                 const title = type === 'ideas'
                     ? escapeHtml(it.title || 'Untitled idea')
                     : type === 'collabs'
-                        ? escapeHtml(it.details ? it.details.slice(0, 40) : 'Collaboration request')
-                        : escapeHtml(it.message || 'Message');
+                        ? escapeHtml(it.title || (it.details ? it.details.slice(0, 40) : 'Collaboration request'))
+                        : escapeHtml(it.title || it.message || 'Message');
                 const bodyText = type === 'messages'
                     ? it.message
                     : type === 'ideas'
                         ? it.idea
                         : it.details;
+                const statusBadge = type === 'collabs'
+                    ? `<span class="item-status ${escapeHtml(status)}">${escapeHtml(status)}</span>`
+                    : '';
                 const li = document.createElement('li');
-                li.innerHTML = `<strong>${title}</strong>
+                li.innerHTML = `<strong>${title}</strong> ${statusBadge}
                         <div class="meta">${it.name ? escapeHtml(it.name) + ' • ' : ''}${escapeHtml(new Date(it.ts).toLocaleString())}</div>
                         <div class="body">${escapeHtml(bodyText || '')}</div>
                         ${type === 'messages' && it.response ? `<div class="response"><strong>Response:</strong> ${escapeHtml(it.response)}</div>` : ''}`;
